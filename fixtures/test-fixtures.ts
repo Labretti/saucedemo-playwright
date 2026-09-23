@@ -1,86 +1,18 @@
-import { test } from '../fixtures/test-fixtures';
+import { test as base } from "@playwright/test";
 
-const username = 'standard_user';
-const password = 'secret_sauce';
+export const test = base.extend({
+    page: async ({ page }, use) => {
+        // Setup перед каждым тестом
+        await page.setViewportSize({
+            width: 1920,
+            height: 1080,
+        });
 
-const productName = 'Sauce Labs Backpack';
-const productPrice = '$29.99';
+        // Передаём page в тест
+        await use(page);
 
-test('Test 1 - Successful login', async ({
-                                             loginPage,
-                                             inventoryPage,
-                                         }) => {
-    await loginPage.open();
-
-    await loginPage.login(
-        username,
-        password
-    );
-
-    await loginPage.expectSuccessfulLogin();
-
-    await inventoryPage.expectProductsPage();
+        // Здесь при необходимости можно добавить cleanup
+    },
 });
 
-test('Test 2 - Add product to cart', async ({
-                                                loginPage,
-                                                inventoryPage,
-                                                cartPage,
-                                            }) => {
-    await loginPage.open();
-
-    await loginPage.login(
-        username,
-        password
-    );
-
-    await inventoryPage.addProductToCart(
-        productName
-    );
-
-    await inventoryPage.expectCartCount('1');
-
-    await inventoryPage.openCart();
-
-    await cartPage.expectProduct(
-        productName,
-        productPrice
-    );
-});
-
-test('Test 3 - Complete checkout', async ({
-                                              loginPage,
-                                              inventoryPage,
-                                              cartPage,
-                                              checkoutPage,
-                                          }) => {
-    await loginPage.open();
-
-    await loginPage.login(
-        username,
-        password
-    );
-
-    await inventoryPage.addProductToCart(
-        productName
-    );
-
-    await inventoryPage.openCart();
-
-    await cartPage.checkout();
-
-    await checkoutPage.fillCustomerInfo(
-        'Sergey',
-        'Topal',
-        '65000'
-    );
-
-    await checkoutPage.expectProduct(
-        productName,
-        productPrice
-    );
-
-    await checkoutPage.finishOrder();
-
-    await checkoutPage.expectOrderCompleted();
-});
+export { expect } from "@playwright/test";

@@ -1,35 +1,35 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page } from "@playwright/test";
 
 export class CartPage {
     readonly page: Page;
+    readonly checkoutButton: Locator;
 
     constructor(page: Page) {
         this.page = page;
+        this.checkoutButton = page.locator('[data-test="checkout"]');
     }
 
-    getProduct(name: string) {
+    getProduct(productName: string) {
         return this.page
             .locator('[data-test="inventory-item"]')
-            .filter({ hasText: name });
+            .filter({ hasText: productName });
     }
 
-    async expectProduct(name: string, price: string) {
-        const product = this.getProduct(name);
-
-        await expect(product).toBeVisible();
-
-        await expect(
-            product.locator('[data-test="inventory-item-name"]')
-        ).toHaveText(name);
-
-        await expect(
-            product.locator('[data-test="inventory-item-price"]')
-        ).toHaveText(price);
+    async getProductName(productName: string) {
+        return await this
+            .getProduct(productName)
+            .locator('[data-test="inventory-item-name"]')
+            .textContent();
     }
 
-    async checkout() {
-        await this.page
-            .locator('[data-test="checkout"]')
-            .click();
+    async getProductPrice(productName: string) {
+        return await this
+            .getProduct(productName)
+            .locator('[data-test="inventory-item-price"]')
+            .textContent();
+    }
+
+    async clickCheckout() {
+        await this.checkoutButton.click();
     }
 }

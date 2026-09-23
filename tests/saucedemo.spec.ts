@@ -1,107 +1,83 @@
-import { test, expect } from '@playwright/test';
+import { expect } from "@playwright/test";
+import { test } from "../fixtures/test-fixtures";
 
-test('Successful login', async ({ page }) => {
-    await page.goto('/');
+import { LoginPage } from "../pages/LoginPage";
+import { InventoryPage } from "../pages/InventoryPage";
+import { CartPage } from "../pages/CartPage";
+import { CheckoutPage } from "../pages/CheckoutPage";
 
-    await page.locator('[data-test="username"]').fill('standard_user');
-    await page.locator('[data-test="password"]').fill('secret_sauce');
-    await page.locator('[data-test="login-button"]').click();
+const username = "standard_user";
+const password = "secret_sauce";
+
+const productName = "Sauce Labs Backpack";
+const productPrice = "$29.99";
+
+test("Test 1 - Successful login", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+
+    await loginPage.navigateToLoginPage();
+    await loginPage.login(username, password);
 
     await expect(page).toHaveURL(/inventory\.html/);
 
-    await expect(
-        page.locator('[data-test="inventory-container"]')
-    ).toBeVisible();
-
-    await expect(
-        page.locator('[data-test="title"]')
-    ).toHaveText('Products');
+    expect(await inventoryPage.getTitle()).toContain("Products");
 });
-test('Add Sauce Labs Backpack to cart', async ({ page }) => {
-    await page.goto('/');
 
-    await page.locator('[data-test="username"]').fill('standard_user');
-    await page.locator('[data-test="password"]').fill('secret_sauce');
-    await page.locator('[data-test="login-button"]').click();
+test("Test 2 - Add product to cart", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
 
-    await expect(page).toHaveURL(/inventory\.html/);
+    await loginPage.navigateToLoginPage();
+    await loginPage.login(username, password);
 
-    const backpack = page
-        .locator('[data-test="inventory-item"]')
-        .filter({ hasText: 'Sauce Labs Backpack' });
+    await inventoryPage.addProductToCart(productName);
 
-    await expect(backpack).toBeVisible();
+    expect(await inventoryPage.getCartCount()).toContain("1");
 
-    await backpack.getByRole('button', { name: 'Add to cart' }).click();
+    await inventoryPage.goToCart();
 
-    await expect(
-        page.locator('[data-test="shopping-cart-badge"]')
-    ).toHaveText('1');
+    expect(
+        await cartPage.getProductName(productName)
+    ).toContain(productName);
 
-    await page.locator('[data-test="shopping-cart-link"]').click();
-
-    await expect(page).toHaveURL(/cart\.html/);
-
-    const cartItem = page
-        .locator('[data-test="inventory-item"]')
-        .filter({ hasText: 'Sauce Labs Backpack' });
-
-    await expect(
-        cartItem.locator('[data-test="inventory-item-name"]')
-    ).toHaveText('Sauce Labs Backpack');
-
-    await expect(
-        cartItem.locator('[data-test="inventory-item-price"]')
-    ).toHaveText('$29.99');
+    expect(
+        await cartPage.getProductPrice(productName)
+    ).toContain(productPrice);
 });
-test('Complete checkout', async ({ page }) => {
-    await page.goto('/');
 
-    await page.locator('[data-test="username"]').fill('standard_user');
-    await page.locator('[data-test="password"]').fill('secret_sauce');
-    await page.locator('[data-test="login-button"]').click();
+test("Test 3 - Complete checkout", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+    const checkoutPage = new CheckoutPage(page);
 
-    await expect(page).toHaveURL(/inventory\.html/);
+    await loginPage.navigateToLoginPage();
+    await loginPage.login(username, password);
 
-    const backpack = page
-        .locator('[data-test="inventory-item"]')
-        .filter({ hasText: 'Sauce Labs Backpack' });
+    await inventoryPage.addProductToCart(productName);
+    await inventoryPage.goToCart();
 
-    await backpack.getByRole('button', { name: 'Add to cart' }).click();
+    await cartPage.clickCheckout();
 
-    await page.locator('[data-test="shopping-cart-link"]').click();
+    await checkoutPage.fillCustomerInformation(
+        "Sergey",
+        "Topal",
+        "65000"
+    );
 
-    await expect(page).toHaveURL(/cart\.html/);
+    expect(
+        await checkoutPage.getProductName(productName)
+    ).toContain(productName);
 
-    await page.locator('[data-test="checkout"]').click();
+    expect(
+        await checkoutPage.getProductPrice(productName)
+    ).toContain(productPrice);
 
-    await expect(page).toHaveURL(/checkout-step-one\.html/);
+    await checkoutPage.finishOrder();
 
-    await page.locator('[data-test="firstName"]').fill('Sergey');
-    await page.locator('[data-test="lastName"]').fill('Topal');
-    await page.locator('[data-test="postalCode"]').fill('65000');
-
-    await page.locator('[data-test="continue"]').click();
-
-    await expect(page).toHaveURL(/checkout-step-two\.html/);
-
-    const checkoutItem = page
-        .locator('[data-test="inventory-item"]')
-        .filter({ hasText: 'Sauce Labs Backpack' });
-
-    await expect(
-        checkoutItem.locator('[data-test="inventory-item-name"]')
-    ).toHaveText('Sauce Labs Backpack');
-
-    await expect(
-        checkoutItem.locator('[data-test="inventory-item-price"]')
-    ).toHaveText('$29.99');
-
-    await page.locator('[data-test="finish"]').click();
-
-    await expect(page).toHaveURL(/checkout-complete\.html/);
-
-    await expect(
-        page.locator('[data-test="complete-header"]')
-    ).toHaveText('Thank you for your order!');
+    expect(
+        await checkoutPage.getSuccessMessage()
+    ).toContain("Thank you for your order!");
 });
