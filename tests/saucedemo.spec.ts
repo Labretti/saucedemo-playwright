@@ -1,65 +1,52 @@
-import { expect } from "@playwright/test";
-import { test } from "../fixtures/test-fixtures";
-
-import { LoginPage } from "../pages/LoginPage";
-import { InventoryPage } from "../pages/InventoryPage";
-import { CartPage } from "../pages/CartPage";
-import { CheckoutPage } from "../pages/CheckoutPage";
-
-const username = "standard_user";
-const password = "secret_sauce";
+import { test, expect } from "../fixtures/test-fixtures";
 
 const productName = "Sauce Labs Backpack";
 const productPrice = "$29.99";
 
-test("Test 1 - Successful login", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    const inventoryPage = new InventoryPage(page);
-
+test("Test 1 - Successful login", async ({
+                                             page,
+                                             loginPage,
+                                             inventoryPage,
+                                             credentials,
+                                         }) => {
     await loginPage.navigateToLoginPage();
-    await loginPage.login(username, password);
+    await loginPage.login(credentials.username, credentials.password);
 
-    await expect(page).toHaveURL(/inventory\.html/);
-
-    expect(await inventoryPage.getTitle()).toContain("Products");
+    await expect(page).toHaveURL(/\/inventory\.html$/);
+    await expect(inventoryPage.title).toBeVisible();
+    await expect(inventoryPage.title).toHaveText("Products");
 });
 
-test("Test 2 - Add product to cart", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    const inventoryPage = new InventoryPage(page);
-    const cartPage = new CartPage(page);
-
-    await loginPage.navigateToLoginPage();
-    await loginPage.login(username, password);
-
+test("Test 2 - Add product to cart", async ({
+                                                page,
+                                                loggedInPage: inventoryPage,
+                                                cartPage,
+                                            }) => {
     await inventoryPage.addProductToCart(productName);
 
-    expect(await inventoryPage.getCartCount()).toContain("1");
+    await expect(inventoryPage.cartBadge).toHaveText("1");
 
     await inventoryPage.goToCart();
 
-    expect(
-        await cartPage.getProductName(productName)
-    ).toContain(productName);
+    await expect(page).toHaveURL(/\/cart\.html$/);
+    await expect(cartPage.getProduct(productName)).toBeVisible();
+    await expect.poll(() => cartPage.getProductName(productName)).toBe(productName);
 
-    expect(
-        await cartPage.getProductPrice(productName)
-    ).toContain(productPrice);
+    await expect.poll(() => cartPage.getProductPrice(productName)).toBe(productPrice);
 });
 
-test("Test 3 - Complete checkout", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    const inventoryPage = new InventoryPage(page);
-    const cartPage = new CartPage(page);
-    const checkoutPage = new CheckoutPage(page);
-
-    await loginPage.navigateToLoginPage();
-    await loginPage.login(username, password);
-
+test("Test 3 - Complete checkout", async ({
+                                              page,
+                                              loggedInPage: inventoryPage,
+                                              cartPage,
+                                              checkoutPage,
+                                          }) => {
     await inventoryPage.addProductToCart(productName);
+
     await inventoryPage.goToCart();
 
     await cartPage.clickCheckout();
+    await expect(page).toHaveURL(/\/checkout-step-one\.html$/);
 
     await checkoutPage.fillCustomerInformation(
         "Sergey",
@@ -67,17 +54,15 @@ test("Test 3 - Complete checkout", async ({ page }) => {
         "65000"
     );
 
-    expect(
-        await checkoutPage.getProductName(productName)
-    ).toContain(productName);
+    await expect(page).toHaveURL(/\/checkout-step-two\.html$/);
+    await expect(checkoutPage.getProduct(productName)).toBeVisible();
+    await expect.poll(() => checkoutPage.getProductName(productName)).toBe(productName);
 
-    expect(
-        await checkoutPage.getProductPrice(productName)
-    ).toContain(productPrice);
+    await expect.poll(() => checkoutPage.getProductPrice(productName)).toBe(productPrice);
 
     await checkoutPage.finishOrder();
 
-    expect(
-        await checkoutPage.getSuccessMessage()
-    ).toContain("Thank you for your order!");
+    await expect(page).toHaveURL(/\/checkout-complete\.html$/);
+    await expect(checkoutPage.successMessage).toBeVisible();
+    await expect(checkoutPage.successMessage).toHaveText("Thank you for your order!");
 });
